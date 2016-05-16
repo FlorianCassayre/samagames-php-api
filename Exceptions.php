@@ -37,7 +37,7 @@ abstract class SamaGamesPlayerException extends Exception
 
 }
 
-class PlayerStatisticsException extends Exception
+class PlayerStatisticsException extends SamaGamesPlayerException
 {
 
 }

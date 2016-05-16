@@ -29,7 +29,7 @@ abstract class PlayerData
 
     public function fetch()
     {
-        if($this->row == null)
+        if(!$this->not_found && $this->row == null)
         {
             $stm = $this->db->prepare("SELECT * FROM $this->table_name WHERE uuid = UNHEX(replace(:uuid, '-', ''))");
             $stm->bindParam(':uuid', $this->uuid);
@@ -41,7 +41,6 @@ abstract class PlayerData
             else
             {
                 $this->not_found = true;
-                throw new PlayerStatisticsException();
             }
         }
     }
@@ -59,7 +58,16 @@ abstract class PlayerData
      */
     public function hasTried()
     {
-        return $this->row == null;
+        return $this->row == null && $this->not_found || $this->row != null;
+    }
+
+    protected function getValue($key, $default)
+    {
+        $this->fetch();
+
+        if($this->hasNotFound() || !isset($this->row[$key]))
+            return $default;
+        return $this->row[$key];
     }
 
     /**
@@ -79,8 +87,7 @@ abstract class PlayerGameStatistics extends PlayerData
      */
     public function getCreationDate()
     {
-        $this->fetch();
-        return $this->row['creation_date'];
+        return $this->getValue('creation_date', null);
     }
 
     /**
@@ -89,8 +96,7 @@ abstract class PlayerGameStatistics extends PlayerData
      */
     public function getUpdateDate()
     {
-        $this->fetch();
-        return $this->row['update_date'];
+        return $this->getValue('update_date', null);
     }
 
     /**
@@ -99,8 +105,7 @@ abstract class PlayerGameStatistics extends PlayerData
      */
     public function getTimesPlayed()
     {
-        $this->fetch();
-        return intval($this->row['played_time']);
+        return intval($this->getValue('played_time', 0));
     }
 }
 
@@ -112,8 +117,7 @@ abstract class PlayerWinnableGameStatistics extends PlayerGameStatistics
      */
     public function getPlayedGames()
     {
-        $this->fetch();
-        return intval($this->row['played_games']);
+        return intval($this->getValue('played_games', 0));
     }
 
     /**
@@ -122,8 +126,7 @@ abstract class PlayerWinnableGameStatistics extends PlayerGameStatistics
      */
     public function getVictories()
     {
-        $this->fetch();
-        return intval($this->row['wins']);
+        return intval($this->getValue('wins', 0));
     }
 }
 
@@ -135,8 +138,7 @@ abstract class PlayerKillableGameStatistics extends PlayerWinnableGameStatistics
      */
     public function getDeaths()
     {
-        $this->fetch();
-        return intval($this->row['deaths']);
+        return intval($this->getValue('deaths', 0));
     }
 
     /**
@@ -145,8 +147,7 @@ abstract class PlayerKillableGameStatistics extends PlayerWinnableGameStatistics
      */
     public function getKills()
     {
-        $this->fetch();
-        return intval($this->row['kills']);
+        return intval($this->getValue('kills', 0));
     }
 }
 
@@ -183,8 +184,7 @@ class PlayerHeroBattleStatistics extends PlayerKillableGameStatistics
      */
     public function getElo()
     {
-        $this->fetch();
-        return intval($this->row['elo']);
+        return intval($this->getValue('elo', 0));
     }
 
     /**
@@ -193,8 +193,7 @@ class PlayerHeroBattleStatistics extends PlayerKillableGameStatistics
      */
     public function getPowerupTaken()
     {
-        $this->fetch();
-        return intval($this->row['powerup_taken']);
+        return intval($this->getValue('powerup_taken', 0));
     }
 }
 
@@ -215,8 +214,7 @@ class PlayerUpperVoidStatistics extends PlayerKillableGameStatistics
      */
     public function getBlocks()
     {
-        $this->fetch();
-        return intval($this->row['blocks']);
+        return intval($this->getValue('blocks', 0));
     }
 
     /**
@@ -225,8 +223,7 @@ class PlayerUpperVoidStatistics extends PlayerKillableGameStatistics
      */
     public function getGrenades()
     {
-        $this->fetch();
-        return intval($this->row['grenades']);
+        return intval($this->getValue('grenades', 0));
     }
 
     /**
@@ -235,8 +232,7 @@ class PlayerUpperVoidStatistics extends PlayerKillableGameStatistics
      */
     public function getTNTLaunched()
     {
-        $this->fetch();
-        return intval($this->row['tnt_launched']);
+        return intval($this->getValue('tnt_launched', 0));
     }
 }
 
@@ -269,8 +265,7 @@ class PlayerUHCRunStatistics extends PlayerKillableGameStatistics
      */
     public function getDamages()
     {
-        $this->fetch();
-        return intval($this->row['damages']);
+        return intval($this->getValue('damages', 0));
     }
 
     /**
@@ -279,8 +274,7 @@ class PlayerUHCRunStatistics extends PlayerKillableGameStatistics
      */
     public function getMaxDamages()
     {
-        $this->fetch();
-        return intval($this->row['max_damages']);
+        return intval($this->getValue('max_damages', 0));
     }
 }
 
@@ -301,8 +295,7 @@ class PlayerJukeboxStatistics extends PlayerGameStatistics
      */
     public function getMehs()
     {
-        $this->fetch();
-        return intval($this->row['mehs']);
+        return intval($this->getValue('mehs', 0));
     }
 
     /**
@@ -311,7 +304,6 @@ class PlayerJukeboxStatistics extends PlayerGameStatistics
      */
     public function getWoots()
     {
-        $this->fetch();
-        return intval($this->row['woots']);
+        return intval($this->getValue('woots', 0));
     }
 }

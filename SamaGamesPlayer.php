@@ -5,6 +5,8 @@ require_once('GroupsManager.php');
 require_once('Friendship.php');
 require_once('Sanction.php');
 require_once('PlayerData.php');
+require_once('ShopRef.php');
+require_once('Transaction.php');
 
 class SamaGamesPlayer extends Player
 {
@@ -38,6 +40,10 @@ class SamaGamesPlayer extends Player
     /** @var PlayerDimensionsStatistics */
     private $dimensionsStatistics;
 
+    /** @var ShopRef */
+    private $shopRefs = null;
+    /** @var Transaction  */
+    private $shopTransactions = null;
 
     /**
      * @param $name_or_uuid string
@@ -65,7 +71,7 @@ class SamaGamesPlayer extends Player
             die();
         }
 
-        $stm = $this->db->prepare("SELECT * FROM players WHERE uuid = UNHEX(replace(:uuid, '-', ''))");
+        $stm = $this->db->prepare("SELECT * FROM players WHERE uuid = UNHEX(REPLACE(:uuid, '-', ''))");
         $stm->bindParam(':uuid', $this->uuid);
         $stm->execute();
         $fetch = $stm->fetchAll();
@@ -146,7 +152,7 @@ class SamaGamesPlayer extends Player
      */
     public function getNickname()
     {
-        return $this->nickname;
+        return $this->nickname === 'null' ? null : $this->nickname;
     }
 
     /**
@@ -185,7 +191,7 @@ class SamaGamesPlayer extends Player
         {
             $this->friends = array();
 
-            $stm = $this->db->prepare("SELECT friendship_id, HEX(requester_uuid) AS requester_uuid, HEX(recipient_uuid) AS recipient_uuid, demand_date, acceptation_date, active_status FROM friendship WHERE requester_uuid = UNHEX(replace(:uuid1, '-', '')) OR recipient_uuid = UNHEX(replace(:uuid2, '-', ''))");
+            $stm = $this->db->prepare("SELECT friendship_id, HEX(requester_uuid) AS requester_uuid, HEX(recipient_uuid) AS recipient_uuid, demand_date, acceptation_date, active_status FROM friendship WHERE requester_uuid = UNHEX(REPLACE(:uuid1, '-', '')) OR recipient_uuid = UNHEX(REPLACE(:uuid2, '-', ''))");
             $stm->bindParam(':uuid1', $this->uuid);
             $stm->bindParam(':uuid2', $this->uuid);
             $stm->execute();
@@ -211,7 +217,7 @@ class SamaGamesPlayer extends Player
         {
             $this->sanctions = array();
 
-            $stm = $this->db->prepare("SELECT sanction_id, HEX(player_uuid) AS player_uuid, type_id, reason, HEX(punisher_uuid) AS punisher_uuid, expiration_date, is_deleted, creation_date, update_date FROM sanctions WHERE player_uuid = UNHEX(replace(:uuid, '-', ''))");
+            $stm = $this->db->prepare("SELECT sanction_id, HEX(player_uuid) AS player_uuid, type_id, reason, HEX(punisher_uuid) AS punisher_uuid, expiration_date, is_deleted, creation_date, update_date FROM sanctions WHERE player_uuid = UNHEX(REPLACE(:uuid, '-', ''))");
             $stm->bindParam(':uuid', $this->uuid);
             $stm->execute();
             $fetch = $stm->fetchAll();
@@ -232,148 +238,89 @@ class SamaGamesPlayer extends Player
      */
     public function getHeroBattleStatistics()
     {
-        if(!$this->herobattleStatistics->hasTried())
-        {
-            try
-            {
-                $this->herobattleStatistics->fetch();
-            }
-            catch(PlayerStatisticsException $ex)
-            {
-                return null;
-            }
-        }
-
-        if($this->herobattleStatistics->hasNotFound())
-        {
-            return null;
-        }
-
         return $this->herobattleStatistics;
     }
 
     /**
-     * @return null|PlayerJukeboxStatistics
+     * @return PlayerJukeboxStatistics
      */
     public function getJukeboxStatistics()
     {
-        if(!$this->jukeboxStatistics->hasTried())
-        {
-            try
-            {
-                $this->jukeboxStatistics->fetch();
-            }
-            catch(PlayerStatisticsException $ex)
-            {
-                return null;
-            }
-        }
-
-        if($this->jukeboxStatistics->hasNotFound())
-        {
-            return null;
-        }
-
         return $this->jukeboxStatistics;
     }
 
     /**
-     * @return null|PlayerQuakeStatistics
+     * @return PlayerQuakeStatistics
      */
     public function getQuakeStatistics()
     {
-        if(!$this->quakeStatistics->hasTried())
-        {
-            try
-            {
-                $this->quakeStatistics->fetch();
-            }
-            catch(PlayerStatisticsException $ex)
-            {
-                return null;
-            }
-        }
-
-        if($this->quakeStatistics->hasNotFound())
-        {
-            return null;
-        }
-
         return $this->quakeStatistics;
     }
 
     /**
-     * @return null|PlayerUHCRunStatistics
+     * @return PlayerUHCRunStatistics
      */
     public function getUHCRunStatistics()
     {
-        if(!$this->uhcrunStatistics->hasTried())
-        {
-            try
-            {
-                $this->uhcrunStatistics->fetch();
-            }
-            catch(PlayerStatisticsException $ex)
-            {
-                return null;
-            }
-        }
-
-        if($this->uhcrunStatistics->hasNotFound())
-        {
-            return null;
-        }
-
         return $this->uhcrunStatistics;
     }
 
     /**
-     * @return null|PlayerUpperVoidStatistics
+     * @return PlayerUpperVoidStatistics
      */
     public function getUpperVoidStatistics()
     {
-        if(!$this->uppervoidStatistics->hasTried())
-        {
-            try
-            {
-                $this->uppervoidStatistics->fetch();
-            }
-            catch(PlayerStatisticsException $ex)
-            {
-                return null;
-            }
-        }
-
-        if($this->uppervoidStatistics->hasNotFound())
-        {
-            return null;
-        }
-
         return $this->uppervoidStatistics;
     }
 
     /**
-     * @return null|PlayerDimensionsStatistics
+     * @return PlayerDimensionsStatistics
      */
     public function getDimensionsStatistics()
     {
-        if(!$this->dimensionsStatistics->hasTried())
-        {
-            try
-            {
-                $this->dimensionsStatistics->fetch();
-            }
-            catch(PlayerStatisticsException $ex)
-            {
-                return null;
-            }
-        }
-
-        if($this->dimensionsStatistics->hasNotFound())
-        {
-            return null;
-        }
-
         return $this->dimensionsStatistics;
+    }
+
+    /**
+     * @return Transaction[]
+     */
+    public function getTransactions()
+    {
+        if($this->shopRefs == null)
+        {
+            $this->shopRefs = array();
+
+            $stm = $this->db->prepare("SELECT * FROM item_description");
+            $stm->execute();
+            $fetch = $stm->fetchAll();
+
+            foreach($fetch as $row)
+            {
+                $id = intval($row['item_id']);
+
+                $itemDescription = new ShopRef($id, $row['item_name'], $row['item_desc'], $row['item_rarity'], $row['item_minecraft_id'], intval($row['price_coins']), intval($row['price_stars']), $row['rank_accessibility'], intval($row['game_category']));
+
+                $this->shopRefs[$id] = $itemDescription;
+            }
+        }
+
+        if($this->shopTransactions == null)
+        {
+            $this->shopTransactions = array();
+
+            $stm = $this->db->prepare("SELECT * FROM transaction_shop WHERE uuid_buyer = UNHEX(REPLACE(:uuid, '-', ''))");
+            $stm->bindParam(':uuid', $this->uuid);
+            $stm->execute();
+            $fetch = $stm->fetchAll();
+
+            foreach ($fetch as $row)
+            {
+                $transaction = new Transaction(intval($row['transaction_id']), $this->shopRefs[intval($row['item_id'])], intval($row['price_coins']), intval($row['price_stars']), $row['transaction_date'], boolval($row['selected']));
+
+                array_push($this->shopTransactions, $transaction);
+            }
+        }
+
+        return $this->shopTransactions;
     }
 }

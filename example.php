@@ -9,8 +9,40 @@ try
 {
     $object = array();
 
-    $player = new SamaGamesPlayer('6infinity8', 'host', 3306, 'samagames', 'root', 'password'); // TODO fill with credentials
+    try
+    {
+        $input = isset($_GET['input']) ? $_GET['input'] : '';
 
+        $player = new SamaGamesPlayer($input, 'host', 3306, 'samagames', 'root', 'password'); // TODO fill with credentials
+    }
+    catch(Exception $ex)
+    {
+        $code = '';
+        if($ex instanceof UnknownInputException)
+        {
+            $code = 'unknown_input';
+        }
+        elseif($ex instanceof UnknownUUIDException)
+        {
+            $code = 'unknown_uuid';
+        }
+        elseif($ex instanceof UnknownNameException)
+        {
+            $code = 'unknown_name';
+        }
+        elseif($ex instanceof UnknownSamaGamesPlayerException)
+        {
+            $code = 'unknown_samagames_player';
+        }
+
+        $object['success'] = false;
+        $object['code'] = $code;
+
+        $json = json_encode((object) $object, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        echo $json;
+
+        die();
+    }
 
     $object['success'] = true;
 
@@ -133,6 +165,31 @@ try
 
 
     $object['statistics'] = (object) $statistics;
+
+
+    $shop = array();
+
+    foreach($player->getTransactions() as $transaction)
+    {
+        $item = array();
+
+        $item['id'] = $transaction->getId();
+        $item['date'] = $transaction->getTransactionDate();
+        $item['item_id'] = $transaction->getItemReference()->getId();
+        $item['item_name'] = utf8_encode($transaction->getItemReference()->getItemName());
+        $item['item_description'] = utf8_encode($transaction->getItemReference()->getItemDescription());
+        $item['item_minecraft_id'] = $transaction->getItemReference()->getItemMinecraftId();
+        $item['item_rarity'] = $transaction->getItemReference()->getItemRarity();
+        $item['price_coins'] = $transaction->getItemReference()->getPriceCoins();
+        $item['price_stars'] = $transaction->getItemReference()->getPriceStars();
+        $item['rank_accessibility'] = $transaction->getItemReference()->getRankAccessibility();
+        $item['game_category'] = $transaction->getItemReference()->getGameCategory();
+        $item['is_selected'] = $transaction->isSelected();
+
+        array_push($shop, $item);
+    }
+
+    $object['transactions'] = $shop;
 
     $json = json_encode((object) $object, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
